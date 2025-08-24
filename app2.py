@@ -1,6 +1,9 @@
 import streamlit as st
 import random
 import time
+from fractions import Fraction
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta 
 
 # Constants
 NUM_PUZZLES = 3
@@ -14,7 +17,7 @@ with col1:
     st.image("header_img.png", width=200)  
 with col2:
     # Game title
-    st.markdown("<h2 style='text-align:center; color:#FF5733;'>Unlock the Professor's Safe- v1.0</h12", 
+    st.markdown("<h2 style='text-align:center; color:#FF5733;'>Unlock the Professor's Safe- v1.0</h2>", 
     unsafe_allow_html=True)
 
 with col3:
@@ -35,6 +38,25 @@ def gen_linear():
     c = a*x + b
     return f"Solve for x: {a}x + {b} = {c}", x
 
+def gen_date_puzzle():
+    # Random start date
+    start_date = datetime(2023, random.randint(1,12), random.randint(1,28))
+
+    # Either days or months+days as elapsed
+    if random.choice([True, False]):
+        elapsed_days = random.randint(5, 60)
+        finish_date = start_date + timedelta(days=elapsed_days)
+        question = f"Start Date: {start_date.strftime('%d-%b-%Y')}, Elapsed Time: {elapsed_days} days. Find the Finish Date (format: DDMMYYYY)."
+    else:
+        elapsed_months = random.randint(1, 6)
+        elapsed_days = random.randint(0, 20)
+        finish_date = start_date + relativedelta(months=elapsed_months, days=elapsed_days)
+        question = f"Start Date: {start_date.strftime('%d-%b-%Y')}, Elapsed Time: {elapsed_months} months {elapsed_days} days. Find the Finish Date (format: DDMMYYYY)."
+
+    # Answer in numeric DDMMYYYY format
+    answer = finish_date.strftime("%d%m%Y")
+    return question, answer
+
 def gen_triangle_area():
     base, height = random.randint(4, 40), random.randint(2, 30)
     if (base * height) % 2: height += 1
@@ -50,12 +72,15 @@ def gen_probability():
     balls = random.choice([(2,3),(3,5),(4,6)])
     total = balls[0] + balls[1]
     colour = random.choice(["red","blue"])
+
     if colour == "red":
-        prob = f"{balls[0]}/{total}"
-        return f"A bag has {balls[0]} red and {balls[1]} blue balls. Probability of drawing red = ? (Hint: Answer in fraction)", prob
+        prob = Fraction(balls[0], total)  # automatically simplifies
+        return (f"A bag has {balls[0]} red and {balls[1]} blue balls. "
+                f"Probability of drawing red = ? (Hint: Answer in fraction)"), str(prob)
     else:
-        prob = f"{balls[1]}/{total}"
-        return f"A bag has {balls[0]} red and {balls[1]} blue balls. Probability of drawing blue = ? (Hint: Answer in fraction)", prob
+        prob = Fraction(balls[1], total)  # automatically simplifies
+        return (f"A bag has {balls[0]} red and {balls[1]} blue balls. "
+                f"Probability of drawing blue = ? (Hint: Answer in fraction)"), str(prob)
 
 def gen_pythagoras():
     triples = [(3,4,5),(5,12,13),(8,15,17),(7,24,25)]
@@ -94,6 +119,7 @@ def gen_basic():
         ("If a set has 3 elements, how many proper subsets does it have","7"),
         ("What is the only even prime number?", "2"),
         ("What is 90 divided by half?", "180")
+        ("")
     ]
     return random.choice(qas)
 
@@ -107,8 +133,9 @@ def gen_riddle():
     return random.choice(qas)
 
 GENERATORS = [
-    gen_arithmetic, gen_linear, gen_triangle_area, gen_percentage, gen_probability, 
-    gen_pythagoras, gen_distance, gen_basic, gen_riddle
+    # gen_arithmetic, 
+    gen_linear, gen_triangle_area, gen_percentage, gen_probability, 
+    gen_pythagoras, gen_distance, gen_basic, gen_riddle, gen_date_puzzle
 ]
 
 from streamlit_autorefresh import st_autorefresh
@@ -170,7 +197,8 @@ if not st.session_state.started:
 # ----------------- Gameplay -----------------
 else:
     # Auto-refresh for timer
-    st_autorefresh(interval=1000, key="timer")
+    if not st.session_state.safe_unlocked:
+        st_autorefresh(interval=1000, key="timer")
 
     elapsed = time.time() - st.session_state.start_time
     remaining = GAME_DURATION - int(elapsed)
@@ -201,31 +229,33 @@ else:
         key_input = f"user_ans_{st.session_state.current_idx}"
         if key_input not in st.session_state:
             st.session_state[key_input] = ""
-        ans = st.text_input("✍ Enter your answer", key=key_input)
 
-        if st.button("✅ Submit", key=f"btn{st.session_state.current_idx}"):
-            user = ans.strip()
-            correct = str(st.session_state.answers[st.session_state.current_idx])
+        with st.form(key=f"form{st.session_state.current_idx}"):
+            ans = st.text_input("✍ Enter your answer", key=key_input)
+            submitted= st.form_submit_button("✅ Submit")
+            if submitted:
+                user = ans.strip()
+                correct = str(st.session_state.answers[st.session_state.current_idx])
 
-            if user == correct:
-                st.success("✅ Correct!")
-                st.session_state.current_idx += 1
-                if st.session_state.current_idx == NUM_PUZZLES:
-                    st.session_state.finished = True
-                st.rerun()
-            else:
-                st.session_state.wrong += 1
-
-                if st.session_state.wrong >= MAX_WRONG:
-                    # 3 wrong attempts reached → Game Over
-                    st.error(f"❌ Game Over! You reached {MAX_WRONG} wrong attempts.")
-                    st.session_state.finished = True  # Stop the game
-                    st.session_state.start_time = time.time() - GAME_DURATION  # Stop timer
+                if user == correct:
+                    st.success("✅ Correct!")
+                    st.session_state.current_idx += 1
+                    if st.session_state.current_idx == NUM_PUZZLES:
+                        st.session_state.finished = True
+                    st.rerun()
                 else:
-                    # Warn player about remaining attempts
-                    st.warning(f"❌ Wrong answer! You have {MAX_WRONG - st.session_state.wrong} attempts left.")
+                    st.session_state.wrong += 1
 
-                st.rerun()
+                    if st.session_state.wrong >= MAX_WRONG:
+                        # 3 wrong attempts reached → Game Over
+                        st.error(f"❌ Game Over! You reached {MAX_WRONG} wrong attempts.")
+                        st.session_state.finished = True  # Stop the game
+                        st.session_state.start_time = time.time() - GAME_DURATION  # Stop timer
+                    else:
+                        # Warn player about remaining attempts
+                        st.warning(f"❌ Wrong answer! You have {MAX_WRONG - st.session_state.wrong} attempts left.")
+
+                    st.rerun()
 
 
     # ----------------- Final Safe Unlock -----------------
