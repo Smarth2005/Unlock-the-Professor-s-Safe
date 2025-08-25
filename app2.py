@@ -105,30 +105,29 @@ def gen_distance():
 
 def gen_basic():
     qas = [
-        ("Find the HCF of 36 and 60", "12"),
-        ("What is the sum of angles in a triangle?", "180"),
-        ("If radius of circle is 7 units, What will be its area? (Answer the multiple of π)", "49"),
-        ("What is the largest 3-digit perfect square number?", "961"),
-        ("If the probability of an event is 0.24, what is the probability of its complement?", "0.76"),
-        ("The perimeter of a square is 64 cm. What is the area of the square?", "256"),
-        ("What is the next prime number after 31?", "37"),
-        ("What is 15% of 200?", "30"),
-        ("What is the square root of 484?", "22"),
-        ("What is the value of π (up to 3 decimal places)?", "3.142" ),
-        ("How many months have 30 days?", "4"),
-        ("If a set has 3 elements, how many proper subsets does it have","7"),
-        ("What is the only even prime number?", "2"),
-        ("What is 90 divided by half?", "180")
-        ("")
+        ("Find the HCF of 36 and 60", 12),
+        ("What is the sum of angles in a triangle?", 180),
+        ("If radius of circle is 7 units, What will be its area? (Answer the multiple of π)", 49),
+        ("What is the largest 3-digit perfect square number?", 961),
+        ("If the probability of an event is 0.24, what is the probability of its complement?", 0.76),
+        ("The perimeter of a square is 64 cm. What is the area of the square?", 256),
+        ("What is the next prime number after 31?", 37),
+        ("What is 15% of 200?", 30),
+        ("What is the square root of 484?", 22),
+        ("What is the value of π (up to 3 decimal places)?", 3.142),
+        ("How many months have 30 days?", 4),
+        ("If a set has 3 elements, how many proper subsets does it have",7),
+        ("What is the only even prime number?", 2),
+        ("What is 90 divided by half?", 180)
     ]
     return random.choice(qas)
 
 def gen_riddle():
     qas = [
-        ("I am an odd number. Take away one letter and I become even. What number am I? (Hint: Answer in numeric only)", "7"),
-        ("If you multiply me by any other number, the answer will always remain the same. Who am I?", "0"),
-        ("I am a number. Double me and add 10, the result is 30. Who am I?", "10"),
-        ("What number do you get when you multiply all the numbers on a telephone’s keypad?", "0"),
+        ("I am an odd number. Take away one letter and I become even. What number am I? (Hint: Answer in numeric only)", 7),
+        ("If you multiply me by any other number, the answer will always remain the same. Who am I?", 0),
+        ("I am a number. Double me and add 10, the result is 30. Who am I?", 10),
+        ("What number do you get when you multiply all the numbers on a telephone’s keypad?", 0),
     ]
     return random.choice(qas)
 
