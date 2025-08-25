@@ -60,13 +60,13 @@ def gen_date_puzzle():
 def gen_triangle_area():
     base, height = random.randint(4, 40), random.randint(2, 30)
     if (base * height) % 2: height += 1
-    area = (base * height) // 2
+    area = (base * height) / 2
     return f"Triangle base={base}, height={height}. Area of Triangle= ?", area
 
 def gen_percentage():
     base = random.choice([50,75,100,120,200,1960,2500,4000])
     p = random.choice([10,15,20,25,30,35,40,50])
-    return f"What is {p}% of {base}?", base * p // 100
+    return f"What is {p}% of {base}?", base * p / 100
 
 def gen_probability():
     balls = random.choice([(2,3),(3,5),(4,6)])
@@ -105,20 +105,22 @@ def gen_distance():
 
 def gen_basic():
     qas = [
-        ("Find the HCF of 36 and 60", 12),
-        ("What is the sum of angles in a triangle?", 180),
+        ("Find the HCF of 360 and 961", 1),
+        ("What is the sum of all angles in a pentagon?", 540),
         ("If radius of circle is 7 units, What will be its area? (Answer the multiple of π)", 49),
         ("What is the largest 3-digit perfect square number?", 961),
         ("If the probability of an event is 0.24, what is the probability of its complement?", 0.76),
         ("The perimeter of a square is 64 cm. What is the area of the square?", 256),
-        ("What is the next prime number after 31?", 37),
-        ("What is 15% of 200?", 30),
-        ("What is the square root of 484?", 22),
         ("What is the value of π (up to 3 decimal places)?", 3.142),
         ("How many months have 30 days?", 4),
         ("If a set has 3 elements, how many proper subsets does it have",7),
-        ("What is the only even prime number?", 2),
-        ("What is 90 divided by half?", 180)
+        ("What is 90 divided by half?", 180),
+        ("A student starts jogging from Main Gate G(0,0) at an average speed of 6 km/h. He has to reach and sit at the boundary of fountain circle in Nirwana. " \
+        "Given that Nirwana's fountain circle is centered at (300,400) and has a radius of 100m. then how much time (minutes) would he take ?", 4),
+        ("Suppose Thapar is organizing a session in the Main Auditorium A(380,180). Two officials will attend the session: "
+        "Official 1 Starts from Director’s office D(300,100) and Official 2 Starts from CILP office C(400,200). "
+        "They plan to meet at a common point on the way to Auditorium, and the meeting point is exactly the midpoint of the line segment joining their offices."
+        "Find the coordinates of the meeting point M.",500)
     ]
     return random.choice(qas)
 
@@ -133,7 +135,7 @@ def gen_riddle():
 
 GENERATORS = [
     # gen_arithmetic, 
-    gen_linear, gen_triangle_area, gen_percentage, gen_probability, 
+    gen_basic, gen_linear, gen_triangle_area, gen_percentage, gen_probability, 
     gen_pythagoras, gen_distance, gen_basic, gen_riddle, gen_date_puzzle
 ]
 
@@ -195,12 +197,16 @@ if not st.session_state.started:
 
 # ----------------- Gameplay -----------------
 else:
-    # Auto-refresh for timer
+    # ----------------- Timer and Gameplay -----------------
     if not st.session_state.safe_unlocked:
-        st_autorefresh(interval=1000, key="timer")
+        st_autorefresh(interval=1000, key="timer")  # refresh every 1 sec
 
-    elapsed = time.time() - st.session_state.start_time
-    remaining = GAME_DURATION - int(elapsed)
+    # Calculate remaining time
+    if st.session_state.start_time is None:
+        remaining = 0
+    else:
+        elapsed = time.time() - st.session_state.start_time
+        remaining = max(0, GAME_DURATION - int(elapsed))  # clamp to 0
 
     # Timer and metrics
     col1, col2, col3 = st.columns(3)
@@ -213,25 +219,25 @@ else:
 
     st.progress(st.session_state.current_idx / NUM_PUZZLES)
 
-    # Time up
-    if remaining <= 0:
-        st.error("⏰ Time's up! The police arrived before you cracked the safe.")
+    # ----------------- Check for Time Up -----------------
+    if remaining <= 0 and not st.session_state.finished:
         st.session_state.finished = True
+        st.session_state.start_time = None  # stop timer
+        st.error("⏰ Time's up! The police arrived before you cracked the safe.")
 
-    # Gameplay puzzles
+    # ----------------- Gameplay puzzles -----------------
     if not st.session_state.finished and st.session_state.current_idx < NUM_PUZZLES:
         q = st.session_state.puzzles[st.session_state.current_idx]
         st.markdown(f"<h3 style='color:blue;'>Puzzle {st.session_state.current_idx+1}/{NUM_PUZZLES}</h3>", unsafe_allow_html=True)
         st.write(q)
         
-        # Preserve input across reruns
         key_input = f"user_ans_{st.session_state.current_idx}"
         if key_input not in st.session_state:
             st.session_state[key_input] = ""
 
         with st.form(key=f"form{st.session_state.current_idx}"):
             ans = st.text_input("✍ Enter your answer", key=key_input)
-            submitted= st.form_submit_button("✅ Submit")
+            submitted = st.form_submit_button("✅ Submit")
             if submitted:
                 user = ans.strip()
                 correct = str(st.session_state.answers[st.session_state.current_idx])
@@ -241,21 +247,17 @@ else:
                     st.session_state.current_idx += 1
                     if st.session_state.current_idx == NUM_PUZZLES:
                         st.session_state.finished = True
+                        st.session_state.start_time = None  # stop timer
                     st.rerun()
                 else:
                     st.session_state.wrong += 1
-
                     if st.session_state.wrong >= MAX_WRONG:
-                        # 3 wrong attempts reached → Game Over
                         st.error(f"❌ Game Over! You reached {MAX_WRONG} wrong attempts.")
-                        st.session_state.finished = True  # Stop the game
-                        st.session_state.start_time = time.time() - GAME_DURATION  # Stop timer
+                        st.session_state.finished = True
+                        st.session_state.start_time = None  # stop timer
                     else:
-                        # Warn player about remaining attempts
                         st.warning(f"❌ Wrong answer! You have {MAX_WRONG - st.session_state.wrong} attempts left.")
-
                     st.rerun()
-
 
     # ----------------- Final Safe Unlock -----------------
     if st.session_state.finished:
@@ -271,7 +273,7 @@ else:
             st.success("🎉 All puzzles solved! Enter the secret safe code to unlock the safe:")
 
             # Safe code input
-            code = st.text_input("🔑 Enter Safe Code", type="password")
+            code = st.text_input("Enter Safe Code", type="password")
 
             if st.button("🔓 Unlock Safe") or st.session_state.safe_unlocked:
                 if code == st.session_state.safe_code or st.session_state.safe_unlocked:
