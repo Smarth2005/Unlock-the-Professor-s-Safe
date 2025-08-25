@@ -211,11 +211,11 @@ else:
     # Timer and metrics
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("⏳ Time Left", f"{remaining}s")
+        st.metric("Time Left", f"{remaining}s")
     with col2:
-        st.metric("❌ Wrong Attempts", f"{st.session_state.wrong}/{MAX_WRONG}")
+        st.metric("Wrong Attempts", f"{st.session_state.wrong}/{MAX_WRONG}")
     with col3:
-        st.metric("🔑 Rule", f"{st.session_state.digit_rule} digit")
+        st.metric("Rule", f"{st.session_state.digit_rule} digit")
 
     st.progress(st.session_state.current_idx / NUM_PUZZLES)
 
@@ -236,8 +236,8 @@ else:
             st.session_state[key_input] = ""
 
         with st.form(key=f"form{st.session_state.current_idx}"):
-            ans = st.text_input("✍ Enter your answer", key=key_input)
-            submitted = st.form_submit_button("✅ Submit")
+            ans = st.text_input("Enter your answer", key=key_input)
+            submitted = st.form_submit_button("Submit")
             if submitted:
                 user = ans.strip()
                 correct = str(st.session_state.answers[st.session_state.current_idx])
@@ -252,7 +252,7 @@ else:
                 else:
                     st.session_state.wrong += 1
                     if st.session_state.wrong >= MAX_WRONG:
-                        st.error(f"❌ Game Over! You reached {MAX_WRONG} wrong attempts.")
+                        st.error(f"Game Over! You reached {MAX_WRONG} wrong attempts.")
                         st.session_state.finished = True
                         st.session_state.start_time = None  # stop timer
                     else:
@@ -261,8 +261,11 @@ else:
 
     # ----------------- Final Safe Unlock -----------------
     if st.session_state.finished:
-        # Generate safe code only if puzzles are solved
-        if st.session_state.current_idx == NUM_PUZZLES:
+        # Determine if player can enter code
+        can_enter_code = (st.session_state.current_idx == NUM_PUZZLES) and (remaining > 0)
+
+        if can_enter_code:
+            # Generate safe code only once
             if not st.session_state.safe_code:
                 digits = []
                 for a in st.session_state.answers:
@@ -273,7 +276,7 @@ else:
             st.success("🎉 All puzzles solved! Enter the secret safe code to unlock the safe:")
 
             # Safe code input
-            code = st.text_input("Enter Safe Code", type="password")
+            code = st.text_input("🔑 Enter Safe Code", type="password")
 
             if st.button("🔓 Unlock Safe") or st.session_state.safe_unlocked:
                 if code == st.session_state.safe_code or st.session_state.safe_unlocked:
@@ -283,9 +286,11 @@ else:
                 else:
                     st.error("❌ Wrong Code! Safe remains locked.")
 
-        # Game Over due to wrong attempts or time up
         else:
-            st.error("💀 Mission Failed! Better luck next time.")
+            # Player cannot enter code
+            st.error("💀 Mission Failed! Time's up or you didn't solve all puzzles.")
+            st.info(f"The correct safe code was: **{st.session_state.safe_code}**")
+
             
     # ----------------- Replay Button -----------------
     if st.session_state.finished:
