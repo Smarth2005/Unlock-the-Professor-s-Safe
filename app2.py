@@ -28,6 +28,12 @@ def normalize_answer(ans):
         return str(int(ans))
     return str(ans)
 
+def check_answer(user_input, correct_answer):
+    try:
+        return float(user_input) == float(correct_answer)
+    except:
+        return user_input.strip() == str(correct_answer)
+
 # Puzzle generators
 def gen_arithmetic():
     a, b = random.randint(2, 60), random.randint(2, 60)
@@ -215,7 +221,7 @@ else:
             if submitted:
                 user = ans.strip()
                 correct = st.session_state.answers[st.session_state.current_idx]
-                if user == correct:
+                if check_answer(user, correct):
                     st.success("✅ Correct!")
                     st.session_state.current_idx += 1
                     if st.session_state.current_idx == NUM_PUZZLES:
