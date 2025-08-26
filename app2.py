@@ -185,15 +185,24 @@ if not st.session_state.started:
 
 # ----------------- Gameplay -----------------
 else:
-    if not st.session_state.safe_unlocked:
-        st_autorefresh(interval=1000, key="timer")
-
+    # Calculate remaining time at the very start
     if st.session_state.start_time is None:
         remaining = 0
     else:
         elapsed = time.time() - st.session_state.start_time
         remaining = max(0, GAME_DURATION - int(elapsed))
 
+    # Strict timer check: game ends immediately if time is up
+    if remaining <= 0 and not st.session_state.finished:
+        st.session_state.finished = True
+        st.session_state.start_time = None
+        st.error("⏰ Time's up! The police arrived before you cracked the safe.")
+
+    # Only refresh timer if game is not finished
+    if not st.session_state.safe_unlocked and not st.session_state.finished:
+        st_autorefresh(interval=1000, key="timer")
+
+    # Display metrics
     col1, col2, col3 = st.columns(3)
     with col1: st.metric("Time Left", f"{remaining}s")
     with col2: st.metric("Wrong Attempts", f"{st.session_state.wrong}/{MAX_WRONG}")
@@ -201,16 +210,12 @@ else:
 
     st.progress(st.session_state.current_idx / NUM_PUZZLES)
 
-    if remaining <= 0 and not st.session_state.finished:
-        st.session_state.finished = True
-        st.session_state.start_time = None
-        st.error("⏰ Time's up! The police arrived before you cracked the safe.")
-
-    if not st.session_state.finished and st.session_state.current_idx < NUM_PUZZLES:
+    # Only allow puzzle submission if time remains
+    if remaining > 0 and not st.session_state.finished and st.session_state.current_idx < NUM_PUZZLES:
         q = st.session_state.puzzles[st.session_state.current_idx]
         st.markdown(f"<h3 style='color:blue;'>Puzzle {st.session_state.current_idx+1}/{NUM_PUZZLES}</h3>", unsafe_allow_html=True)
         st.write(q)
-        
+
         key_input = f"user_ans_{st.session_state.current_idx}"
         if key_input not in st.session_state:
             st.session_state[key_input] = ""
@@ -221,12 +226,19 @@ else:
             if submitted:
                 user = ans.strip()
                 correct = st.session_state.answers[st.session_state.current_idx]
+
+                # Flexible numeric check
+                def check_answer(user_input, correct_answer):
+                    try:
+                        return float(user_input) == float(correct_answer)
+                    except:
+                        return user_input.strip() == str(correct_answer)
+
                 if check_answer(user, correct):
                     st.success("✅ Correct!")
                     st.session_state.current_idx += 1
                     if st.session_state.current_idx == NUM_PUZZLES:
-                        st.session_state.finished = True
-                        # DO NOT reset start_time here 🚀
+                        st.session_state.finished = True  # Mark finished for final evaluation
                     st.rerun()
                 else:
                     st.session_state.wrong += 1
@@ -238,6 +250,7 @@ else:
                         st.warning(f"❌ Wrong answer! You have {MAX_WRONG - st.session_state.wrong} attempts left.")
                     st.rerun()
 
+    # Game finished logic
     if st.session_state.finished:
         can_enter_code = (st.session_state.current_idx == NUM_PUZZLES) and (remaining > 0)
 
