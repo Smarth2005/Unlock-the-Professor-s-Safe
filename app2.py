@@ -4,26 +4,31 @@ import time
 from fractions import Fraction
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta 
+from streamlit_autorefresh import st_autorefresh
 
-# Constants
+# ----------------- Config -----------------
 NUM_PUZZLES = 3
 MAX_WRONG = 3
 GAME_DURATION = 90  # seconds
 
-# ----------------- Header Section -----------------
+# ----------------- Header -----------------
 col1, col2, col3 = st.columns([1,2,1])
 with col1:
-    # Header image
     st.image("header_img.png", width=200)  
 with col2:
-    # Game title
     st.markdown("<h2 style='text-align:center; color:#FF5733;'>Unlock the Professor's Safe- v1.0</h2>", 
     unsafe_allow_html=True)
-
 with col3:
-    # You can leave this blank or add another image if needed
     st.empty()
-# ----------------- Puzzle Generators -----------------
+
+# ----------------- Helpers -----------------
+def normalize_answer(ans):
+    """Convert float integers to int string, else keep as str."""
+    if isinstance(ans, float) and ans.is_integer():
+        return str(int(ans))
+    return str(ans)
+
+# Puzzle generators
 def gen_arithmetic():
     a, b = random.randint(2, 60), random.randint(2, 60)
     op = random.choice(['+','-','*'])
@@ -39,10 +44,7 @@ def gen_linear():
     return f"Solve for x: {a}x + {b} = {c}", x
 
 def gen_date_puzzle():
-    # Random start date
     start_date = datetime(2023, random.randint(1,12), random.randint(1,28))
-
-    # Either days or months+days as elapsed
     if random.choice([True, False]):
         elapsed_days = random.randint(5, 60)
         finish_date = start_date + timedelta(days=elapsed_days)
@@ -52,10 +54,7 @@ def gen_date_puzzle():
         elapsed_days = random.randint(0, 20)
         finish_date = start_date + relativedelta(months=elapsed_months, days=elapsed_days)
         question = f"Start Date: {start_date.strftime('%d-%b-%Y')}, Elapsed Time: {elapsed_months} months {elapsed_days} days. Find the Finish Date (format: DDMMYYYY)."
-
-    # Answer in numeric DDMMYYYY format
-    answer = finish_date.strftime("%d%m%Y")
-    return question, answer
+    return question, finish_date.strftime("%d%m%Y")
 
 def gen_triangle_area():
     base, height = random.randint(4, 40), random.randint(2, 30)
@@ -72,13 +71,12 @@ def gen_probability():
     balls = random.choice([(2,3),(3,5),(4,6)])
     total = balls[0] + balls[1]
     colour = random.choice(["red","blue"])
-
     if colour == "red":
-        prob = Fraction(balls[0], total)  # automatically simplifies
+        prob = Fraction(balls[0], total)
         return (f"A bag has {balls[0]} red and {balls[1]} blue balls. "
                 f"Probability of drawing red = ? (Hint: Answer in fraction)"), str(prob)
     else:
-        prob = Fraction(balls[1], total)  # automatically simplifies
+        prob = Fraction(balls[1], total)
         return (f"A bag has {balls[0]} red and {balls[1]} blue balls. "
                 f"Probability of drawing blue = ? (Hint: Answer in fraction)"), str(prob)
 
@@ -88,14 +86,12 @@ def gen_pythagoras():
     if random.choice([True, False]):
         return f"Right triangle legs = {a} and {b}. Hypotenuse = ?", c
     else:
-        # give hyp and one leg, ask missing leg
         if random.choice([True, False]):
             return f"Hypotenuse = {c}, one leg = {a}. Other leg = ?", b
         else:
             return f"Hypotenuse = {c}, one leg = {b}. Other leg = ?", a
 
 def gen_distance():
-    # make integer distances using common Pythagorean deltas
     deltas = [(3,4),(5,12),(6,8),(8,15),(7,24)]
     dx,dy = random.choice(deltas)
     x1 = random.randint(-10,10); y1 = random.randint(-10,10)
@@ -105,6 +101,12 @@ def gen_distance():
 
 def gen_basic():
     qas = [
+        ("A student starts jogging from Main Gate G(0,0) at an average speed of 6 km/h. He has to reach and sit at the boundary of fountain circle in Nirwana. " \
+        "Given that Nirwana's fountain circle is centered at (300,400) and has a radius of 100m. then how much time (minutes) would he take ?", 4),
+        ("Suppose Thapar is organizing a session in the Main Auditorium A(380,180). Two officials will attend the session: "
+        "Official 1 Starts from Director’s office D(300,100) and Official 2 Starts from CILP office C(400,200). "
+        "They plan to meet at a common point on the way to Auditorium, and the meeting point is exactly the midpoint of the line segment joining their offices."
+        "Find the coordinates of the meeting point M.",500),
         ("Find the HCF of 360 and 961", 1),
         ("What is the sum of all angles in a pentagon?", 540),
         ("If radius of circle is 7 units, What will be its area? (Answer the multiple of π)", 49),
@@ -114,19 +116,13 @@ def gen_basic():
         ("What is the value of π (up to 3 decimal places)?", 3.142),
         ("How many months have 30 days?", 4),
         ("If a set has 3 elements, how many proper subsets does it have",7),
-        ("What is 90 divided by half?", 180),
-        ("A student starts jogging from Main Gate G(0,0) at an average speed of 6 km/h. He has to reach and sit at the boundary of fountain circle in Nirwana. " \
-        "Given that Nirwana's fountain circle is centered at (300,400) and has a radius of 100m. then how much time (minutes) would he take ?", 4),
-        ("Suppose Thapar is organizing a session in the Main Auditorium A(380,180). Two officials will attend the session: "
-        "Official 1 Starts from Director’s office D(300,100) and Official 2 Starts from CILP office C(400,200). "
-        "They plan to meet at a common point on the way to Auditorium, and the meeting point is exactly the midpoint of the line segment joining their offices."
-        "Find the coordinates of the meeting point M.",500)
+        ("What is 90 divided by half?", 180)
     ]
     return random.choice(qas)
 
 def gen_riddle():
     qas = [
-        ("I am an odd number. Take away one letter and I become even. What number am I? (Hint: Answer in numeric only)", 7),
+        ("I am an odd number. Take away one letter and I become even. What number am I?", 7),
         ("If you multiply me by any other number, the answer will always remain the same. Who am I?", 0),
         ("I am a number. Double me and add 10, the result is 30. Who am I?", 10),
         ("What number do you get when you multiply all the numbers on a telephone’s keypad?", 0),
@@ -134,34 +130,21 @@ def gen_riddle():
     return random.choice(qas)
 
 GENERATORS = [
-    # gen_arithmetic, 
     gen_basic, gen_linear, gen_triangle_area, gen_percentage, gen_probability, 
     gen_pythagoras, gen_distance, gen_basic, gen_riddle, gen_date_puzzle
 ]
 
-from streamlit_autorefresh import st_autorefresh
-
 # ----------------- Session State -----------------
-if "started" not in st.session_state:
-    st.session_state.started = False
-if "start_time" not in st.session_state:
-    st.session_state.start_time = None
-if "digit_rule" not in st.session_state:
-    st.session_state.digit_rule = random.choice(["first", "last"])
-if "puzzles" not in st.session_state:
-    st.session_state.puzzles = []
-if "answers" not in st.session_state:
-    st.session_state.answers = []
-if "current_idx" not in st.session_state:
-    st.session_state.current_idx = 0
-if "wrong" not in st.session_state:
-    st.session_state.wrong = 0
-if "finished" not in st.session_state:
-    st.session_state.finished = False
-if "safe_code" not in st.session_state:
-    st.session_state.safe_code = ""
-if "safe_unlocked" not in st.session_state:
-    st.session_state.safe_unlocked = False
+if "started" not in st.session_state: st.session_state.started = False
+if "start_time" not in st.session_state: st.session_state.start_time = None
+if "digit_rule" not in st.session_state: st.session_state.digit_rule = random.choice(["first", "last"])
+if "puzzles" not in st.session_state: st.session_state.puzzles = []
+if "answers" not in st.session_state: st.session_state.answers = []
+if "current_idx" not in st.session_state: st.session_state.current_idx = 0
+if "wrong" not in st.session_state: st.session_state.wrong = 0
+if "finished" not in st.session_state: st.session_state.finished = False
+if "safe_code" not in st.session_state: st.session_state.safe_code = ""
+if "safe_unlocked" not in st.session_state: st.session_state.safe_unlocked = False
 
 # ----------------- Start Screen -----------------
 if not st.session_state.started:
@@ -174,8 +157,7 @@ if not st.session_state.started:
         - Solve all puzzles to get the secret code digits.
         - Enter the correct **safe code** at the end to unlock the safe and win.
         - Each puzzle may have a **hint** to help you solve it.
-        - Be careful! A wrong code entry at the safe will not unlock it.
-        - Work quickly and accurately to escape before time runs out!
+        - Wrong code entry keeps the safe locked.
         """)
     st.warning(f"Collect the **{st.session_state.digit_rule} digit** of each correct answer to form the code.")
     
@@ -188,44 +170,36 @@ if not st.session_state.started:
         st.session_state.wrong = 0
         st.session_state.finished = False
         st.session_state.safe_code = ""
-        # Generate puzzles
+        st.session_state.safe_unlocked = False
         for g in random.sample(GENERATORS, NUM_PUZZLES):
             q, a = g()
             st.session_state.puzzles.append(q)
-            st.session_state.answers.append(a)
+            st.session_state.answers.append(normalize_answer(a))
         st.rerun()
 
 # ----------------- Gameplay -----------------
 else:
-    # ----------------- Timer and Gameplay -----------------
     if not st.session_state.safe_unlocked:
-        st_autorefresh(interval=1000, key="timer")  # refresh every 1 sec
+        st_autorefresh(interval=1000, key="timer")
 
-    # Calculate remaining time
     if st.session_state.start_time is None:
         remaining = 0
     else:
         elapsed = time.time() - st.session_state.start_time
-        remaining = max(0, GAME_DURATION - int(elapsed))  # clamp to 0
+        remaining = max(0, GAME_DURATION - int(elapsed))
 
-    # Timer and metrics
     col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Time Left", f"{remaining}s")
-    with col2:
-        st.metric("Wrong Attempts", f"{st.session_state.wrong}/{MAX_WRONG}")
-    with col3:
-        st.metric("Rule", f"{st.session_state.digit_rule} digit")
+    with col1: st.metric("Time Left", f"{remaining}s")
+    with col2: st.metric("Wrong Attempts", f"{st.session_state.wrong}/{MAX_WRONG}")
+    with col3: st.metric("Rule", f"{st.session_state.digit_rule} digit")
 
     st.progress(st.session_state.current_idx / NUM_PUZZLES)
 
-    # ----------------- Check for Time Up -----------------
     if remaining <= 0 and not st.session_state.finished:
         st.session_state.finished = True
-        st.session_state.start_time = None  # stop timer
+        st.session_state.start_time = None
         st.error("⏰ Time's up! The police arrived before you cracked the safe.")
 
-    # ----------------- Gameplay puzzles -----------------
     if not st.session_state.finished and st.session_state.current_idx < NUM_PUZZLES:
         q = st.session_state.puzzles[st.session_state.current_idx]
         st.markdown(f"<h3 style='color:blue;'>Puzzle {st.session_state.current_idx+1}/{NUM_PUZZLES}</h3>", unsafe_allow_html=True)
@@ -240,32 +214,28 @@ else:
             submitted = st.form_submit_button("Submit")
             if submitted:
                 user = ans.strip()
-                correct = str(st.session_state.answers[st.session_state.current_idx])
-
+                correct = st.session_state.answers[st.session_state.current_idx]
                 if user == correct:
                     st.success("✅ Correct!")
                     st.session_state.current_idx += 1
                     if st.session_state.current_idx == NUM_PUZZLES:
                         st.session_state.finished = True
-                        st.session_state.start_time = None  # stop timer
+                        # DO NOT reset start_time here 🚀
                     st.rerun()
                 else:
                     st.session_state.wrong += 1
                     if st.session_state.wrong >= MAX_WRONG:
                         st.error(f"Game Over! You reached {MAX_WRONG} wrong attempts.")
                         st.session_state.finished = True
-                        st.session_state.start_time = None  # stop timer
+                        st.session_state.start_time = None
                     else:
                         st.warning(f"❌ Wrong answer! You have {MAX_WRONG - st.session_state.wrong} attempts left.")
                     st.rerun()
 
-    # ----------------- Final Safe Unlock -----------------
     if st.session_state.finished:
-        # Determine if player can enter code
         can_enter_code = (st.session_state.current_idx == NUM_PUZZLES) and (remaining > 0)
 
         if can_enter_code:
-            # Generate safe code only once
             if not st.session_state.safe_code:
                 digits = []
                 for a in st.session_state.answers:
@@ -274,8 +244,6 @@ else:
                 st.session_state.safe_code = "".join(digits)
 
             st.success("🎉 All puzzles solved! Enter the secret safe code to unlock the safe:")
-
-            # Safe code input
             code = st.text_input("🔑 Enter Safe Code", type="password")
 
             if st.button("🔓 Unlock Safe") or st.session_state.safe_unlocked:
@@ -285,15 +253,10 @@ else:
                     st.success("🎉 YOU WIN! Safe unlocked successfully.")
                 else:
                     st.error("❌ Wrong Code! Safe remains locked.")
-
         else:
-            # Player cannot enter code
             st.error("💀 Mission Failed! Time's up or you didn't solve all puzzles.")
             st.info(f"The correct safe code was: **{st.session_state.safe_code}**")
 
-            
-    # ----------------- Replay Button -----------------
-    if st.session_state.finished:
         if st.button("🔄 Replay Game"):
             st.session_state.started = False
             st.session_state.start_time = None
@@ -306,4 +269,3 @@ else:
             st.session_state.safe_code = ""
             st.session_state.safe_unlocked = False
             st.rerun()
-
