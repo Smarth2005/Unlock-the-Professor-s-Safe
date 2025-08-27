@@ -1,6 +1,6 @@
 # Unlock the Professor's Safe — Multiplayer (SQLite)
 
-A Streamlit puzzle game for classrooms. Students solve 3 puzzles under a timer and then unlock a safe using the **first/last digit of each answer they wrote**. Results are stored in a local SQLite DB.
+A Streamlit puzzle game for classrooms. Students solve 5 puzzles under a timer and then unlock a safe using the **first/last digit of each answer they wrote**. Results are stored in a local SQLite DB.
 
 ## Run
 
