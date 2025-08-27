@@ -10,7 +10,7 @@ from streamlit_autorefresh import st_autorefresh
 # ----------------- Config -----------------
 NUM_PUZZLES = 5
 MAX_WRONG = 3
-GAME_DURATION = 90  # seconds
+GAME_DURATION = 100
 
 st.set_page_config(page_title="Unlock the Professor's Safe", page_icon="🧩", layout="centered")
 
