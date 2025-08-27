@@ -1,31 +1,45 @@
-import sqlite3
 import pandas as pd
 import streamlit as st
+from supabase import create_client, Client
 
 st.title("📊 Game Results Leaderboard")
 
-conn = sqlite3.connect("game_results.db")
+# ----------------- Supabase Setup -----------------
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 
-tables = pd.read_sql_query("SELECT name FROM sqlite_master WHERE type='table';", conn)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-if not tables.empty:
-    table_name = "results"
-    df = pd.read_sql_query(f"SELECT * FROM {table_name};", conn)
+# ----------------- Fetch Results -----------------
+response = supabase.table("results").select("*").execute()
+data = response.data
+
+if data:
+    df = pd.DataFrame(data)
 
     st.write("### All Results")
     st.dataframe(df)
 
     if "puzzles_solved" in df.columns:
-        leaderboard = df.sort_values(by="puzzles_solved", ascending=False)
+        # Leaderboard sorted: highest puzzles_solved, then fastest time
+        sort_cols = ["puzzles_solved"]
+        ascending = [False]
+
+        if "total_time_seconds" in df.columns:
+            sort_cols.append("total_time_seconds")
+            ascending.append(True)
+
+        leaderboard = df.sort_values(by=sort_cols, ascending=ascending)
+
         st.write("### 🏆 Leaderboard")
         st.dataframe(leaderboard)
 
+    # ----------------- Reset Leaderboard -----------------
     if st.button("🗑️ Reset Leaderboard"):
-        cursor = conn.cursor()
-        cursor.execute(f"DELETE FROM {table_name};")
-        conn.commit()
-        st.success("Leaderboard has been cleared ✅")
+        st.warning("This will delete ALL results!")
+        confirm = st.checkbox("Yes, clear the leaderboard")
+        if confirm:
+            supabase.table("results").delete().neq("id", 0).execute()
+            st.success("Leaderboard has been cleared ✅")
 else:
-    st.warning("⚠ No tables found in database.")
-
-conn.close()
+    st.warning("⚠ No data found in database.")
