@@ -1,7 +1,7 @@
 import streamlit as st
 import random
 import time
-import sqlite3
+from supabase import create_client
 from fractions import Fraction
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
@@ -10,31 +10,16 @@ from streamlit_autorefresh import st_autorefresh
 # ----------------- Config -----------------
 NUM_PUZZLES = 5
 MAX_WRONG = 3
-GAME_DURATION = 100
+GAME_DURATION = 90  # seconds
 
 st.set_page_config(page_title="Unlock the Professor's Safe", page_icon="🧩", layout="centered")
 
 # ----------------- DB Helpers -----------------
 @st.cache_resource
 def get_db():
-    conn = sqlite3.connect("game_results.db", check_same_thread=False)
-    conn.execute(
-        """CREATE TABLE IF NOT EXISTS results (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            student_name TEXT NOT NULL,
-            puzzles_solved INTEGER NOT NULL,
-            wrong_attempts INTEGER NOT NULL,
-            finished INTEGER NOT NULL,
-            safe_unlocked INTEGER NOT NULL,
-            safe_code TEXT,
-            digit_rule TEXT,
-            total_time_seconds INTEGER,
-            user_answers TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )"""
-    )
-    conn.commit()
-    return conn
+    SUPABASE_URL = st.secrets["SUPABASE_URL"]
+    SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def log_result_once(
     student_name: str,
@@ -49,26 +34,26 @@ def log_result_once(
 ):
     if st.session_state.get("result_logged", False):
         return
-    conn = get_db()
-    conn.execute(
-        """INSERT INTO results
-           (student_name, puzzles_solved, wrong_attempts, finished, safe_unlocked,
-            safe_code, digit_rule, total_time_seconds, user_answers)
-           VALUES (?,?,?,?,?,?,?,?,?)""",
-        (
-            student_name,
-            puzzles_solved,
-            wrong_attempts,
-            finished,
-            safe_unlocked,
-            safe_code,
-            digit_rule,
-            total_time_seconds,
-            "|".join(user_answers or []),
-        ),
-    )
-    conn.commit()
-    st.session_state.result_logged = True
+
+    supabase = get_db()
+    data = {
+        "student_name": student_name,
+        "puzzles_solved": puzzles_solved,
+        "wrong_attempts": wrong_attempts,
+        "finished": finished,
+        "safe_unlocked": safe_unlocked,
+        "safe_code": safe_code,
+        "digit_rule": digit_rule,
+        "total_time_seconds": total_time_seconds,
+        "user_answers": "|".join(user_answers or []),
+    }
+
+    try:
+        supabase.table("results").insert(data).execute()
+        st.session_state.result_logged = True
+    except Exception as e:
+        st.error(f"❌ Failed to log result: {e}")
+
 
 # ----------------- Header -----------------
 col1, col2, col3 = st.columns([1, 2, 1])
