@@ -39,7 +39,8 @@ if data:
         st.warning("This will delete ALL results!")
         confirm = st.checkbox("Yes, clear the leaderboard")
         if confirm:
-            supabase.table("results").delete().neq("id", 0).execute()
+            supabase.table("results").delete().execute()
+
             st.success("Leaderboard has been cleared ✅")
 else:
     st.warning("⚠ No data found in database.")

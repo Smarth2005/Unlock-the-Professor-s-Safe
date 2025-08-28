@@ -10,7 +10,7 @@ from streamlit_autorefresh import st_autorefresh
 # ----------------- Config -----------------
 NUM_PUZZLES = 5
 MAX_WRONG = 3
-GAME_DURATION = 90  # seconds
+GAME_DURATION = 100  # seconds
 
 st.set_page_config(page_title="Unlock the Professor's Safe", page_icon="🧩", layout="centered")
 
@@ -271,9 +271,10 @@ else:
     if st.session_state.start_time is None:
         remaining = 0
         elapsed_total = 0
-    elif st.session_state.safe_unlocked:   # ✅ NEW CONDITION: freeze timer if safe is open
-        remaining = 0
+    elif st.session_state.safe_unlocked or st.session_state.finished:
+        # Freeze timer at the moment of unlock/finish
         elapsed_total = int(time.time() - st.session_state.start_time)
+        remaining = max(0, GAME_DURATION - elapsed_total)
     else:
         elapsed = time.time() - st.session_state.start_time
         remaining = max(0, GAME_DURATION - int(elapsed))
